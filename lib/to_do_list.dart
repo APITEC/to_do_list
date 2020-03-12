@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 // Widgets
@@ -9,11 +10,20 @@ class ToDoList extends StatefulWidget {
 }
 
 class _ToDoListState extends State<ToDoList> {
-  List toDoList = [
-    {'name': 'Work out', 'status': true},
-    {'name': 'Program', 'status': false},
-    {'name': 'Have a drink', 'status': true}
-  ];
+  String newTaskName;
+  String newDueDate = '';
+  List toDoList = [];
+
+  int getIncompleteTasks() {
+    int incompleteTasks = 0;
+
+    toDoList.forEach((task) {
+      if (!task['status']) {
+        incompleteTasks++;
+      }
+    });
+    return incompleteTasks;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +47,7 @@ class _ToDoListState extends State<ToDoList> {
                     ),
                   ),
                   Text(
-                    'N items',
+                    '${toDoList.where((task) => !task['status']).length} items',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -61,9 +71,16 @@ class _ToDoListState extends State<ToDoList> {
                 itemBuilder: (context, index) {
                   return TaskTile(
                     toDo: toDoList[index],
-                    callback: (status) {
+                    changeTaskStatus: (status) {
+                      setState(
+                        () {
+                          toDoList[index]['status'] = status;
+                        },
+                      );
+                    },
+                    deleteTask: () {
                       setState(() {
-                        toDoList[index]['status'] = status;
+                        toDoList.removeAt(index);
                       });
                     },
                   );
@@ -80,10 +97,44 @@ class _ToDoListState extends State<ToDoList> {
             context: context,
             builder: (context) => AlertDialog(
               title: Text('Add Task'),
-              content: TextField(),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  TextField(
+                    onChanged: (value) {
+                      newTaskName = value;
+                    },
+                  ),
+                  SizedBox(
+                    height: 20,
+                  ),
+                  GestureDetector(
+                    onTap: () async {
+                      var selectedDate = await showDatePicker(
+                        context: context,
+                        firstDate: DateTime.now(),
+                        initialDate: DateTime.now(),
+                        lastDate: DateTime(2030),
+                      );
+                      print(selectedDate);
+                      newDueDate = '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}';
+                    },
+                    child: Text(
+                      'Add due date',
+                      style: TextStyle(color: Colors.pinkAccent),
+                    ),
+                  ),
+                ],
+              ),
               actions: <Widget>[
                 FlatButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    setState(() {
+                      toDoList.add({'name': newTaskName, 'status': false, 'dueDate': newDueDate});
+                    });
+                    newDueDate = '';
+                    Navigator.pop(context);
+                  },
                   child: Text(
                     'Add!',
                     style: TextStyle(color: Colors.pinkAccent),
