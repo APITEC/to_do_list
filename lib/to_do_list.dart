@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Widgets
 import 'task.dart';
@@ -13,6 +14,7 @@ class _ToDoListState extends State<ToDoList> {
   String newTaskName;
   String newDueDate = '';
   List toDoList = [];
+  bool loaded = false;
 
   int getIncompleteTasks() {
     int incompleteTasks = 0;
@@ -26,8 +28,29 @@ class _ToDoListState extends State<ToDoList> {
   }
 
   @override
+  void didChangeDependencies() async {
+    super.didChangeDependencies();
+    await Firestore.instance.collection('tasks').getDocuments().then(
+          (data) => data.documents.forEach(
+            (doc) => toDoList.add(
+              {
+                'document': doc.documentID,
+                'name': doc['name'],
+                'status': doc['status'] == 'true',
+                'dueDate': doc['dueDate'],
+              },
+            ),
+          ),
+        );
+    setState(() {
+      loaded = true;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: Colors.cyan,
       body: Column(
         children: <Widget>[
@@ -66,26 +89,30 @@ class _ToDoListState extends State<ToDoList> {
                   top: Radius.circular(32),
                 ),
               ),
-              child: ListView.builder(
-                itemCount: toDoList.length,
-                itemBuilder: (context, index) {
-                  return TaskTile(
-                    toDo: toDoList[index],
-                    changeTaskStatus: (status) {
-                      setState(
-                        () {
-                          toDoList[index]['status'] = status;
-                        },
-                      );
-                    },
-                    deleteTask: () {
-                      setState(() {
-                        toDoList.removeAt(index);
-                      });
-                    },
-                  );
-                },
-              ),
+              child: loaded
+                  ? ListView.builder(
+                      itemCount: toDoList.length,
+                      itemBuilder: (context, index) {
+                        return TaskTile(
+                          toDo: toDoList[index],
+                          changeTaskStatus: (status) {
+                            setState(
+                              () {
+                                toDoList[index]['status'] = status;
+                              },
+                            );
+                          },
+                          deleteTask: () {
+                            setState(() {
+                              toDoList.removeAt(index);
+                            });
+                          },
+                        );
+                      },
+                    )
+                  : Center(
+                      child: CircularProgressIndicator(),
+                    ),
             ),
           ),
         ],
@@ -109,6 +136,9 @@ class _ToDoListState extends State<ToDoList> {
                     height: 20,
                   ),
                   GestureDetector(
+                    onLongPress: () {
+                      print('Hola pablo.');
+                    },
                     onTap: () async {
                       var selectedDate = await showDatePicker(
                         context: context,
@@ -128,15 +158,42 @@ class _ToDoListState extends State<ToDoList> {
               ),
               actions: <Widget>[
                 FlatButton(
-                  onPressed: () {
-                    setState(() {
-                      toDoList.add({'name': newTaskName, 'status': false, 'dueDate': newDueDate});
-                    });
+                  onPressed: () async {
+                    String documentId;
+                    showDialog(
+                      context: context,
+                      builder: (context) => Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                    await Firestore.instance.collection('tasks').add({'name': newTaskName, 'status': false, 'dueDate': newDueDate}).then((document) => documentId = document.documentID);
+                    Navigator.pop(context);
                     newDueDate = '';
                     Navigator.pop(context);
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text('Hey!'),
+                        content: Text('$newTaskName added to your list!'),
+                        actions: <Widget>[
+                          FlatButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            child: Text(
+                              'Add!',
+                              style: TextStyle(color: Colors.pinkAccent),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                    setState(() {
+                      toDoList.add({'document': documentId, 'name': newTaskName, 'status': false, 'dueDate': newDueDate});
+                    });
                   },
                   child: Text(
-                    'Add!',
+                    'Ok!',
                     style: TextStyle(color: Colors.pinkAccent),
                   ),
                 ),
