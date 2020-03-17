@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
 class TaskTile extends StatelessWidget {
   const TaskTile({
@@ -17,33 +17,70 @@ class TaskTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onLongPress: () async {
-        showDialog(
-          context: context,
-          builder: (context) => Center(
-            child: CircularProgressIndicator(),
-          ),
-        );
-        await Firestore.instance.collection('tasks').document(toDo['document']).delete();
-        Navigator.pop(context);
-        showDialog(
+        bool confirm = false;
+        await showDialog(
           context: context,
           builder: (context) => AlertDialog(
             title: Text('Hey!'),
-            content: Text('${toDo['name']} removed from your list!'),
+            content: Text('You are about to delete ${toDo['name']}. This action cannot be undone. Proceed?'),
             actions: <Widget>[
               FlatButton(
+                child: Text(
+                  'No',
+                  style: TextStyle(
+                    color: Colors.black,
+                  ),
+                ),
                 onPressed: () {
                   Navigator.pop(context);
                 },
+              ),
+              FlatButton(
                 child: Text(
-                  'Ok!',
-                  style: TextStyle(color: Colors.pinkAccent),
+                  'Yes',
+                  style: TextStyle(
+                    color: Colors.pinkAccent,
+                  ),
                 ),
+                onPressed: () {
+                  confirm = true;
+                  Navigator.pop(context);
+                },
               ),
             ],
           ),
         );
-        deleteTask();
+        if (confirm) {
+          showDialog(
+            context: context,
+            builder: (context) => Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+          await Firestore.instance.collection('tasks').document(toDo['document']).delete();
+          Navigator.pop(context);
+          deleteTask();
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('Hey!'),
+              content: Text('You deleted the task ${toDo['name']}.'),
+              actions: <Widget>[
+                FlatButton(
+                  child: Text(
+                    'Ok',
+                    style: TextStyle(
+                      color: Colors.pinkAccent,
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            ),
+          );
+        }
       },
       child: CheckboxListTile(
         title: Text(

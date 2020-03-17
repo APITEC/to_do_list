@@ -11,10 +11,10 @@ class ToDoList extends StatefulWidget {
 }
 
 class _ToDoListState extends State<ToDoList> {
+  bool loaded = false;
   String newTaskName;
   String newDueDate = '';
   List toDoList = [];
-  bool loaded = false;
 
   int getIncompleteTasks() {
     int incompleteTasks = 0;
@@ -30,14 +30,15 @@ class _ToDoListState extends State<ToDoList> {
   @override
   void didChangeDependencies() async {
     super.didChangeDependencies();
+
     await Firestore.instance.collection('tasks').getDocuments().then(
           (data) => data.documents.forEach(
-            (doc) => toDoList.add(
+            (document) => toDoList.add(
               {
-                'document': doc.documentID,
-                'name': doc['name'],
-                'status': doc['status'] == 'true',
-                'dueDate': doc['dueDate'],
+                'document': document.documentID,
+                'name': document['name'],
+                'status': document['status'],
+                'dueDate': document['dueDate'],
               },
             ),
           ),
@@ -50,7 +51,6 @@ class _ToDoListState extends State<ToDoList> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false,
       backgroundColor: Colors.cyan,
       body: Column(
         children: <Widget>[
@@ -136,9 +136,6 @@ class _ToDoListState extends State<ToDoList> {
                     height: 20,
                   ),
                   GestureDetector(
-                    onLongPress: () {
-                      print('Hola pablo.');
-                    },
                     onTap: () async {
                       var selectedDate = await showDatePicker(
                         context: context,
@@ -168,32 +165,34 @@ class _ToDoListState extends State<ToDoList> {
                     );
                     await Firestore.instance.collection('tasks').add({'name': newTaskName, 'status': false, 'dueDate': newDueDate}).then((document) => documentId = document.documentID);
                     Navigator.pop(context);
+                    setState(() {
+                      toDoList.add({'document': documentId, 'name': newTaskName, 'status': false, 'dueDate': newDueDate});
+                    });
                     newDueDate = '';
                     Navigator.pop(context);
                     showDialog(
                       context: context,
                       builder: (context) => AlertDialog(
                         title: Text('Hey!'),
-                        content: Text('$newTaskName added to your list!'),
+                        content: Text('You created the task ${newTaskName}.'),
                         actions: <Widget>[
                           FlatButton(
+                            child: Text(
+                              'Ok',
+                              style: TextStyle(
+                                color: Colors.pinkAccent,
+                              ),
+                            ),
                             onPressed: () {
                               Navigator.pop(context);
                             },
-                            child: Text(
-                              'Add!',
-                              style: TextStyle(color: Colors.pinkAccent),
-                            ),
                           ),
                         ],
                       ),
                     );
-                    setState(() {
-                      toDoList.add({'document': documentId, 'name': newTaskName, 'status': false, 'dueDate': newDueDate});
-                    });
                   },
                   child: Text(
-                    'Ok!',
+                    'Add!',
                     style: TextStyle(color: Colors.pinkAccent),
                   ),
                 ),
